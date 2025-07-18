@@ -9,9 +9,11 @@ public class Chunk : MonoBehaviour
     // 0: 空気, 1: 石, 2: 土, 3: 草
     public int[] blocks = new int[ChunkSize * ChunkSize * ChunkSize];
 
+    MeshFilter meshFilter;
+
     void Start()
     {
-
+        meshFilter = GetComponent<MeshFilter>();
     }
 
     // 安全にブロックを取得する関数（範囲外の場合は空気として扱う）
@@ -47,10 +49,10 @@ public class Chunk : MonoBehaviour
                     // 隣接ブロックが空気である場合にのみ面を生成
                     if (GetBlockSafely(x - 1, y, z) == 0) // 西
                     {
-                        vertices.Add(new Vector3(x, y, z));
-                        vertices.Add(new Vector3(x, y + 1, z));
-                        vertices.Add(new Vector3(x, y + 1, z + 1));
                         vertices.Add(new Vector3(x, y, z + 1));
+                        vertices.Add(new Vector3(x, y + 1, z + 1));
+                        vertices.Add(new Vector3(x, y + 1, z));
+                        vertices.Add(new Vector3(x, y, z));
                         int baseIndex = vertices.Count - 4;
                         triangles.Add(baseIndex);
                         triangles.Add(baseIndex + 1);
@@ -102,9 +104,9 @@ public class Chunk : MonoBehaviour
                     if (GetBlockSafely(x, y + 1, z) == 0) // 上
                     {
                         vertices.Add(new Vector3(x, y + 1, z));
-                        vertices.Add(new Vector3(x + 1, y + 1, z));
-                        vertices.Add(new Vector3(x + 1, y + 1, z + 1));
                         vertices.Add(new Vector3(x, y + 1, z + 1));
+                        vertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                        vertices.Add(new Vector3(x + 1, y + 1, z));
                         int baseIndex = vertices.Count - 4;
                         triangles.Add(baseIndex);
                         triangles.Add(baseIndex + 1);
@@ -119,10 +121,10 @@ public class Chunk : MonoBehaviour
                     }
                     if (GetBlockSafely(x, y, z - 1) == 0) // 南
                     {
-                        vertices.Add(new Vector3(x, y, z));
                         vertices.Add(new Vector3(x + 1, y, z));
-                        vertices.Add(new Vector3(x + 1, y + 1, z));
+                        vertices.Add(new Vector3(x, y, z));
                         vertices.Add(new Vector3(x, y + 1, z));
+                        vertices.Add(new Vector3(x + 1, y + 1, z));
                         int baseIndex = vertices.Count - 4;
                         triangles.Add(baseIndex);
                         triangles.Add(baseIndex + 1);
@@ -165,21 +167,7 @@ public class Chunk : MonoBehaviour
         mesh.uv = uvs.ToArray();
         mesh.RecalculateNormals();
 
-        // メッシュフィルターとメッシュレンダラーの設定
-        MeshFilter meshFilter = GetComponent<MeshFilter>();
-        if (meshFilter == null)
-        {
-            meshFilter = gameObject.AddComponent<MeshFilter>();
-        }
         meshFilter.mesh = mesh;
-
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-        if (meshRenderer == null)
-        {
-            meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            meshRenderer.material = new Material(Shader.Find("Standard"));
-            meshRenderer.material.color = Color.gray; // デフォルトの色を設定
-        }
 
     }
 }
