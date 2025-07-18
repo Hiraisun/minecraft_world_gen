@@ -104,11 +104,7 @@ public class ChunkEditor : Editor
                     int index = x + y * Chunk.ChunkSize + z * Chunk.ChunkSize * Chunk.ChunkSize;
                     
                     // 地層に応じてブロックタイプを設定
-                    if (y == height && y > baseHeight + 2) // 表面が高い場合は草
-                    {
-                        chunk.blocks[index] = 3; // 草
-                    }
-                    else if (y >= height - 2 && y > baseHeight) // 表面近くは土
+                    if (y >= height - 2 && y > baseHeight) // 表面近くは土
                     {
                         chunk.blocks[index] = 2; // 土
                     }
