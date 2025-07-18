@@ -4,8 +4,9 @@ using UnityEngine;
 public class World : MonoBehaviour
 {
     public const int ChunkSize = 16;
+    const int renderRadius = 5;
 
-    const int renderRadius = 5; // プレイヤーからのチャンクのレンダリング距離
+    private int seed;
 
     [SerializeField] private GameObject chunkPrefab;
     [SerializeField] private Transform playerTransform;
@@ -18,6 +19,9 @@ public class World : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        // シード値をランダムに設定
+        seed = Random.Range(0, 10000);
+
         lastChunkPosition = GetChunkPosition();
         currentChunkPosition = lastChunkPosition;
 
@@ -101,7 +105,7 @@ public class World : MonoBehaviour
         Chunk chunk = chunkObject.GetComponent<Chunk>();
         activeChunks[chunkPos] = chunk;
 
-        chunk.GenerateChunkTerrain();
+        chunk.GenerateChunkTerrain(chunkPos, seed);
         chunk.GenerateChunkMesh();
     }
 

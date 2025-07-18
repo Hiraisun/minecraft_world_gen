@@ -49,10 +49,15 @@ public class Chunk : MonoBehaviour
     public int[] blocks = new int[ChunkSize * ChunkSize * ChunkSize];
     [SerializeField] private MeshFilter meshFilter;
     [SerializeField] private MeshCollider meshCollider;
+    
+    [Header("Terrain Generation Settings")]
+    [SerializeField] private float noiseScale = 0.1f;
+    [SerializeField] private float heightMultiplier = 8.0f;
+    [SerializeField] private int baseHeight = 4;
 
     void Start()
     {
-        
+
     }
 
     private int GetBlockSafely(int x, int y, int z)
@@ -65,17 +70,54 @@ public class Chunk : MonoBehaviour
         return blocks[index];
     }
 
-    public void GenerateChunkTerrain()
+    public void GenerateChunkTerrain(Vector2Int chunkPos, int seed)
     {
-        // 仮に全blockを石で初期化
+        // シードを使ってノイズオフセットを生成
+        UnityEngine.Random.InitState(seed);
+        Vector2 noiseOffset = new Vector2(
+            UnityEngine.Random.Range(-1000f, 1000f),
+            UnityEngine.Random.Range(-1000f, 1000f)
+        );
+        
+        // まず全てをクリア
+        for (int i = 0; i < blocks.Length; i++)
+        {
+            blocks[i] = 0;
+        }
+        
+        // 各XZ座標でパーリンノイズを使って高さを決定
         for (int x = 0; x < ChunkSize; x++)
         {
-            for (int y = 0; y < ChunkSize; y++)
+            for (int z = 0; z < ChunkSize; z++)
             {
-                for (int z = 0; z < ChunkSize; z++)
+                // ワールド座標を計算（チャンク位置を考慮）
+                float worldX = chunkPos.x * ChunkSize + x;
+                float worldZ = chunkPos.y * ChunkSize + z;
+                
+                // パーリンノイズの座標（オフセット付き）
+                float noiseX = (worldX + noiseOffset.x) * noiseScale;
+                float noiseZ = (worldZ + noiseOffset.y) * noiseScale;
+                
+                float noiseValue = Mathf.PerlinNoise(noiseX, noiseZ);
+                int height = baseHeight + Mathf.RoundToInt(noiseValue * heightMultiplier);
+                
+                // チャンクサイズ内に制限
+                height = Mathf.Clamp(height, 0, ChunkSize - 1);
+                
+                // 高さまでブロックを配置
+                for (int y = 0; y <= height; y++)
                 {
                     int index = x + y * ChunkSize + z * ChunkSize * ChunkSize;
-                    blocks[index] = 1; // 全て石で初期化
+
+                    // 地層に応じてブロックタイプを設定
+                    if (y >= height - 2 && y > baseHeight) // 表面近くは土
+                    {
+                        blocks[index] = 2; // 土
+                    }
+                    else // それ以外は石
+                    {
+                        blocks[index] = 1; // 石
+                    }
                 }
             }
         }
