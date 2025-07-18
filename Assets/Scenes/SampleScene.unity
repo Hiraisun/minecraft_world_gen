@@ -407,6 +407,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkPrefab: {fileID: 2322757300282495097, guid: 1a642fc08620b8d47ab6a723e9a3a63f, type: 3}
+  playerTransform: {fileID: 1059291853}
 --- !u!4 &719905376
 Transform:
   m_ObjectHideFlags: 0
