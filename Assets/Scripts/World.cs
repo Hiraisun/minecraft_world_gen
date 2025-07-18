@@ -26,7 +26,8 @@ public class World : MonoBehaviour
         lastChunkPosition = GetChunkPosition();
         currentChunkPosition = lastChunkPosition;
 
-        // 初期チャンクを生成
+        // 初期チャンクを生成（距離順にソート）
+        List<Vector2Int> chunksToGenerate = new List<Vector2Int>();
         for (int x = -renderRadius; x <= renderRadius; x++)
         {
             for (int z = -renderRadius; z <= renderRadius; z++)
@@ -35,9 +36,20 @@ public class World : MonoBehaviour
                 float distance = Vector2.Distance(chunkPos, lastChunkPosition);
                 if (distance <= renderRadius)
                 {
-                    await ActivateChunkAsync(chunkPos);
+                    chunksToGenerate.Add(chunkPos);
                 }
             }
+        }
+
+        // 距離でソート（プレイヤーに近い順）
+        chunksToGenerate.Sort((a, b) => 
+            Vector2.Distance(a, lastChunkPosition).CompareTo(Vector2.Distance(b, lastChunkPosition))
+        );
+
+        // 近い順に生成
+        foreach (var chunkPos in chunksToGenerate)
+        {
+            await ActivateChunkAsync(chunkPos);
         }
     }
 
