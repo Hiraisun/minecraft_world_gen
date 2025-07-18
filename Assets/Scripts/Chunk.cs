@@ -1,5 +1,21 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System.Threading.Tasks;
+
+// メッシュデータを格納するクラス
+public class MeshData
+{
+    public List<Vector3> vertices;
+    public List<int> triangles;
+    public List<Vector2> uvs;
+
+    public MeshData(List<Vector3> vertices, List<int> triangles, List<Vector2> uvs)
+    {
+        this.vertices = vertices;
+        this.triangles = triangles;
+        this.uvs = uvs;
+    }
+}
 
 // このクラスをChunkスクリプトの外側に追加
 public static class BlockUV
@@ -49,7 +65,7 @@ public class Chunk : MonoBehaviour
     public int[] blocks = new int[ChunkSize * ChunkSize * ChunkSize];
     [SerializeField] private MeshFilter meshFilter;
     [SerializeField] private MeshCollider meshCollider;
-    
+
     [Header("Terrain Generation Settings")]
     [SerializeField] private float noiseScale = 0.1f;
     [SerializeField] private float heightMultiplier = 8.0f;
@@ -70,60 +86,73 @@ public class Chunk : MonoBehaviour
         return blocks[index];
     }
 
-    public void GenerateChunkTerrain(Vector2Int chunkPos, int seed)
+    public async Task GenerateChunkTerrainAsync(Vector2Int chunkPos, int seed)
     {
-        // シードを使ってノイズオフセットを生成
-        UnityEngine.Random.InitState(seed);
-        Vector2 noiseOffset = new Vector2(
-            UnityEngine.Random.Range(-1000f, 1000f),
-            UnityEngine.Random.Range(-1000f, 1000f)
-        );
-        
-        // まず全てをクリア
-        for (int i = 0; i < blocks.Length; i++)
+        await Task.Run(() =>
         {
-            blocks[i] = 0;
-        }
-        
-        // 各XZ座標でパーリンノイズを使って高さを決定
-        for (int x = 0; x < ChunkSize; x++)
-        {
-            for (int z = 0; z < ChunkSize; z++)
-            {
-                // ワールド座標を計算（チャンク位置を考慮）
-                float worldX = chunkPos.x * ChunkSize + x;
-                float worldZ = chunkPos.y * ChunkSize + z;
-                
-                // パーリンノイズの座標（オフセット付き）
-                float noiseX = (worldX + noiseOffset.x) * noiseScale;
-                float noiseZ = (worldZ + noiseOffset.y) * noiseScale;
-                
-                float noiseValue = Mathf.PerlinNoise(noiseX, noiseZ);
-                int height = baseHeight + Mathf.RoundToInt(noiseValue * heightMultiplier);
-                
-                // チャンクサイズ内に制限
-                height = Mathf.Clamp(height, 0, ChunkSize - 1);
-                
-                // 高さまでブロックを配置
-                for (int y = 0; y <= height; y++)
-                {
-                    int index = x + y * ChunkSize + z * ChunkSize * ChunkSize;
+            // シードを使ってノイズオフセットを生成
+            System.Random random = new System.Random(seed);
+            Vector2 noiseOffset = new Vector2(
+                (float)(random.NextDouble() * 2000.0 - 1000.0),
+                (float)(random.NextDouble() * 2000.0 - 1000.0)
+            );
 
-                    // 地層に応じてブロックタイプを設定
-                    if (y >= height - 2 && y > baseHeight) // 表面近くは土
+            // まず全てをクリア
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                blocks[i] = 0;
+            }
+
+            // 各XZ座標でパーリンノイズを使って高さを決定
+            for (int x = 0; x < ChunkSize; x++)
+            {
+                for (int z = 0; z < ChunkSize; z++)
+                {
+                    // ワールド座標を計算（チャンク位置を考慮）
+                    float worldX = chunkPos.x * ChunkSize + x;
+                    float worldZ = chunkPos.y * ChunkSize + z;
+
+                    // パーリンノイズの座標（オフセット付き）
+                    float noiseX = (worldX + noiseOffset.x) * noiseScale;
+                    float noiseZ = (worldZ + noiseOffset.y) * noiseScale;
+
+                    float noiseValue = Mathf.PerlinNoise(noiseX, noiseZ);
+                    int height = baseHeight + Mathf.RoundToInt(noiseValue * heightMultiplier);
+
+                    // チャンクサイズ内に制限
+                    height = Mathf.Clamp(height, 0, ChunkSize - 1);
+
+                    // 高さまでブロックを配置
+                    for (int y = 0; y <= height; y++)
                     {
-                        blocks[index] = 2; // 土
-                    }
-                    else // それ以外は石
-                    {
-                        blocks[index] = 1; // 石
+                        int index = x + y * ChunkSize + z * ChunkSize * ChunkSize;
+
+                        // 地層に応じてブロックタイプを設定
+                        if (y >= height - 2 && y > baseHeight) // 表面近くは土
+                        {
+                            blocks[index] = 2; // 土
+                        }
+                        else // それ以外は石
+                        {
+                            blocks[index] = 1; // 石
+                        }
                     }
                 }
             }
-        }
+        });
     }
 
-    public void GenerateChunkMesh()
+    public async Task GenerateChunkMeshAsync()
+    {
+        // メッシュデータを非同期で生成
+        var meshData = await Task.Run(() => GenerateMeshData());
+        
+        // メインスレッドでMeshオブジェクトを作成・適用
+        ApplyMeshData(meshData);
+    }
+
+    // 非同期で実行されるメッシュデータ生成
+    private MeshData GenerateMeshData()
     {
         List<Vector3> vertices = new List<Vector3>();
         List<int> triangles = new List<int>();
@@ -149,7 +178,7 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x, y + 1, z + 1));
                         vertices.Add(new Vector3(x, y + 1, z));
                         vertices.Add(new Vector3(x, y, z));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                     // 東
                     if (GetBlockSafely(x + 1, y, z) == 0)
@@ -158,7 +187,7 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x + 1, y + 1, z));
                         vertices.Add(new Vector3(x + 1, y + 1, z + 1));
                         vertices.Add(new Vector3(x + 1, y, z + 1));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                     // 下
                     if (GetBlockSafely(x, y - 1, z) == 0)
@@ -167,7 +196,7 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x, y, z));
                         vertices.Add(new Vector3(x + 1, y, z));
                         vertices.Add(new Vector3(x + 1, y, z + 1));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                     // 上
                     if (GetBlockSafely(x, y + 1, z) == 0)
@@ -176,7 +205,7 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x, y + 1, z + 1));
                         vertices.Add(new Vector3(x + 1, y + 1, z + 1));
                         vertices.Add(new Vector3(x + 1, y + 1, z));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                     // 南
                     if (GetBlockSafely(x, y, z - 1) == 0)
@@ -185,7 +214,7 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x, y + 1, z));
                         vertices.Add(new Vector3(x + 1, y + 1, z));
                         vertices.Add(new Vector3(x + 1, y, z));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                     // 北
                     if (GetBlockSafely(x, y, z + 1) == 0)
@@ -194,24 +223,30 @@ public class Chunk : MonoBehaviour
                         vertices.Add(new Vector3(x + 1, y + 1, z + 1));
                         vertices.Add(new Vector3(x, y + 1, z + 1));
                         vertices.Add(new Vector3(x, y, z + 1));
-                        AddFace(vertices.Count, triangles, uvs, blockUVs);
+                        AddFaceToLists(vertices.Count, triangles, uvs, blockUVs);
                     }
                 }
             }
         }
 
+        return new MeshData(vertices, triangles, uvs);
+    }
+
+    // メインスレッドでMeshオブジェクトを作成・適用
+    private void ApplyMeshData(MeshData meshData)
+    {
         Mesh mesh = new Mesh();
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.uv = uvs.ToArray();
+        mesh.vertices = meshData.vertices.ToArray();
+        mesh.triangles = meshData.triangles.ToArray();
+        mesh.uv = meshData.uvs.ToArray();
         mesh.RecalculateNormals();
 
         meshFilter.mesh = mesh;
         meshCollider.sharedMesh = mesh;
     }
 
-    // 面の生成処理を共通化
-    private void AddFace(int vertexCount, List<int> triangles, List<Vector2> uvs, Vector2[] faceUVs)
+    // 非同期での面の生成処理
+    private void AddFaceToLists(int vertexCount, List<int> triangles, List<Vector2> uvs, Vector2[] faceUVs)
     {
         int baseIndex = vertexCount - 4;
         triangles.Add(baseIndex);
@@ -226,5 +261,12 @@ public class Chunk : MonoBehaviour
         uvs.Add(faceUVs[1]);
         uvs.Add(faceUVs[2]);
         uvs.Add(faceUVs[3]);
+    }
+
+    // 非同期でチャンクを完全生成する統合メソッド
+    public async Task GenerateChunkAsync(Vector2Int chunkPos, int seed)
+    {
+        await GenerateChunkTerrainAsync(chunkPos, seed);
+        await GenerateChunkMeshAsync();
     }
 }

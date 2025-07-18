@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class World : MonoBehaviour
@@ -17,7 +18,7 @@ public class World : MonoBehaviour
     Vector2Int currentChunkPosition;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    async void Start()
     {
         // シード値をランダムに設定
         seed = Random.Range(0, 10000);
@@ -34,14 +35,14 @@ public class World : MonoBehaviour
                 float distance = Vector2.Distance(chunkPos, lastChunkPosition);
                 if (distance <= renderRadius)
                 {
-                    ActivateChunk(chunkPos);
+                    await ActivateChunkAsync(chunkPos);
                 }
             }
         }
     }
 
     // Update is called once per frame
-    void Update()
+    async void Update()
     {
         currentChunkPosition = GetChunkPosition();
 
@@ -63,7 +64,7 @@ public class World : MonoBehaviour
                         chunksToKeep.Add(chunkPos);
                         if (!activeChunks.ContainsKey(chunkPos))
                         {
-                            ActivateChunk(chunkPos);
+                            await ActivateChunkAsync(chunkPos);
                         }
                     }
                 }
@@ -98,15 +99,15 @@ public class World : MonoBehaviour
         return newChunkPosition;
     }
 
-    private void ActivateChunk(Vector2Int chunkPos)
+    private async Task ActivateChunkAsync(Vector2Int chunkPos)
     {
         Vector3 position = new Vector3(chunkPos.x * ChunkSize, 0, chunkPos.y * ChunkSize);
         GameObject chunkObject = Instantiate(chunkPrefab, position, Quaternion.identity);
         Chunk chunk = chunkObject.GetComponent<Chunk>();
         activeChunks[chunkPos] = chunk;
 
-        chunk.GenerateChunkTerrain(chunkPos, seed);
-        chunk.GenerateChunkMesh();
+        await chunk.GenerateChunkTerrainAsync(chunkPos, seed);
+        await chunk.GenerateChunkMeshAsync();
     }
 
     private void DeactivateChunk(Vector2Int chunkPos)
