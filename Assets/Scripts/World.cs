@@ -42,7 +42,7 @@ public class World : MonoBehaviour
         }
 
         // 距離でソート（プレイヤーに近い順）
-        chunksToGenerate.Sort((a, b) => 
+        chunksToGenerate.Sort((a, b) =>
             Vector2.Distance(a, lastChunkPosition).CompareTo(Vector2.Distance(b, lastChunkPosition))
         );
 
@@ -118,8 +118,7 @@ public class World : MonoBehaviour
         Chunk chunk = chunkObject.GetComponent<Chunk>();
         activeChunks[chunkPos] = chunk;
 
-        await chunk.GenerateChunkTerrainAsync(chunkPos, seed);
-        await chunk.GenerateChunkMeshAsync();
+        await chunk.GenerateChunkAsync(chunkPos, seed);
     }
 
     private void DeactivateChunk(Vector2Int chunkPos)
@@ -128,6 +127,21 @@ public class World : MonoBehaviour
         {
             activeChunks.Remove(chunkPos);
             Destroy(chunk.gameObject);
+        }
+    }
+
+    public async Task SetBlockWorld(Vector3 position, int blockType)
+    {
+        // チャンク座標を計算
+        Vector2Int chunkPos = new Vector2Int(
+            Mathf.FloorToInt(position.x / ChunkSize),
+            Mathf.FloorToInt(position.z / ChunkSize)
+        );
+        if (activeChunks.TryGetValue(chunkPos, out Chunk chunk))
+        {
+            // チャンク内のローカル座標を計算
+            Vector3Int localPosition = Vector3Int.FloorToInt(position - new Vector3(chunkPos.x * ChunkSize, 0, chunkPos.y * ChunkSize));
+            await chunk.SetBlock(localPosition, blockType);
         }
     }
 }

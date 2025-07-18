@@ -86,7 +86,7 @@ public class Chunk : MonoBehaviour
         return blocks[index];
     }
 
-    public async Task GenerateChunkTerrainAsync(Vector2Int chunkPos, int seed)
+    private async Task GenerateChunkTerrainAsync(Vector2Int chunkPos, int seed)
     {
         await Task.Run(() =>
         {
@@ -142,11 +142,11 @@ public class Chunk : MonoBehaviour
         });
     }
 
-    public async Task GenerateChunkMeshAsync()
+    private async Task GenerateChunkMeshAsync()
     {
         // メッシュデータを非同期で生成
         var meshData = await Task.Run(() => GenerateMeshData());
-        
+
         // メインスレッドでMeshオブジェクトを作成・適用
         ApplyMeshData(meshData);
     }
@@ -269,4 +269,21 @@ public class Chunk : MonoBehaviour
         await GenerateChunkTerrainAsync(chunkPos, seed);
         await GenerateChunkMeshAsync();
     }
+
+
+    public async Task SetBlock(Vector3Int position, int blockType)
+    {
+        if (position.x < 0 || position.x >= ChunkSize || position.y < 0 || position.y >= ChunkSize || position.z < 0 || position.z >= ChunkSize)
+        {
+            Debug.LogWarning("Block position out of bounds");
+            return;
+        }
+        int index = position.x + position.y * ChunkSize + position.z * ChunkSize * ChunkSize;
+        blocks[index] = blockType;
+
+        // メッシュを再生成
+        await GenerateChunkMeshAsync();
+    }
+
+
 }

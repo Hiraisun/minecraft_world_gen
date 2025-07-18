@@ -14,15 +14,24 @@ public class Player : MonoBehaviour
     [SerializeField] private float groundCheckRadius = 0.1f;
     [SerializeField] private LayerMask groundLayerMask = 1;
     
+    [Header("Block Placement")]
+    [SerializeField] private float placeRange = 5f;
+    [SerializeField] private int blockTypeToPlace = 3; // 設置するブロックタイプ（木）
+    
     private Camera playerCamera;
     private float xRotation = 0f;
     public bool isGrounded;
+    
+    // World参照
+    private World world;
     
     // Input Actions
     private InputAction moveAction;
     private InputAction lookAction;
     private InputAction jumpAction;
     private InputAction escapeAction;
+    private InputAction placeAction;
+    private InputAction breakAction;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -56,9 +65,17 @@ public class Player : MonoBehaviour
         lookAction = InputSystem.actions.FindAction("Look");
         jumpAction = InputSystem.actions.FindAction("Jump");
         escapeAction = InputSystem.actions.FindAction("Escape");
+        placeAction = InputSystem.actions.FindAction("Place");
+        breakAction = InputSystem.actions.FindAction("Break");
 
         // ESCキーのコールバック設定
         escapeAction.performed += OnEscapePressed;
+        
+        // Placeキーのコールバック設定
+        placeAction.performed += OnPlacePressed;
+        
+        // World参照を取得
+        world = FindFirstObjectByType<World>();
     }
 
 
@@ -77,6 +94,22 @@ public class Player : MonoBehaviour
         else
         {
             Cursor.lockState = CursorLockMode.Locked;
+        }
+    }
+    
+    private async void OnPlacePressed(InputAction.CallbackContext context)
+    {
+        if (world == null || playerCamera == null) return;
+        
+        // カメラからRaycastを飛ばす
+        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+        RaycastHit hit;
+        
+        if (Physics.Raycast(ray, out hit, placeRange, groundLayerMask))
+        {
+            // 着弾点の表面にブロックを設置（法線方向に少しずらす）
+            Vector3 placePosition = hit.point + hit.normal * 0.5f;
+            await world.SetBlockWorld(placePosition, blockTypeToPlace);
         }
     }
     
