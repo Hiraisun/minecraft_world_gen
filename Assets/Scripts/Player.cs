@@ -17,6 +17,7 @@ public class Player : MonoBehaviour
     [Header("Block Placement")]
     [SerializeField] private float placeRange = 5f;
     [SerializeField] private int blockTypeToPlace = 3; // 設置するブロックタイプ（木）
+    [SerializeField] private int blockTypeToBreak = 0; // 破壊(空気)
     
     private Camera playerCamera;
     private float xRotation = 0f;
@@ -73,6 +74,9 @@ public class Player : MonoBehaviour
         
         // Placeキーのコールバック設定
         placeAction.performed += OnPlacePressed;
+
+        // Breakキーのコールバック設定
+        breakAction.performed += OnBreakPressed;
         
         // World参照を取得
         world = FindFirstObjectByType<World>();
@@ -108,8 +112,24 @@ public class Player : MonoBehaviour
         if (Physics.Raycast(ray, out hit, placeRange, groundLayerMask))
         {
             // 着弾点の表面にブロックを設置（法線方向に少しずらす）
-            Vector3 placePosition = hit.point + hit.normal * 0.5f;
+            Vector3 placePosition = hit.point + hit.normal * 0.1f;
             await world.SetBlockWorld(placePosition, blockTypeToPlace);
+        }
+    }
+
+    private async void OnBreakPressed(InputAction.CallbackContext context)
+    {
+        if (world == null || playerCamera == null) return;
+        
+        // カメラからRaycastを飛ばす
+        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+        RaycastHit hit;
+        
+        if (Physics.Raycast(ray, out hit, placeRange, groundLayerMask))
+        {
+            // 着弾点の表面にブロックを設置（法線方向に少しずらす）
+            Vector3 placePosition = hit.point - hit.normal * 0.1f;
+            await world.SetBlockWorld(placePosition, blockTypeToBreak);
         }
     }
     
