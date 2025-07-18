@@ -47,13 +47,12 @@ public class Chunk : MonoBehaviour
 {
     public const int ChunkSize = 16;
     public int[] blocks = new int[ChunkSize * ChunkSize * ChunkSize];
-    MeshFilter meshFilter;
-    MeshCollider meshCollider;
+    [SerializeField] private MeshFilter meshFilter;
+    [SerializeField] private MeshCollider meshCollider;
 
     void Start()
     {
-        meshFilter = GetComponent<MeshFilter>();
-        meshCollider = GetComponent<MeshCollider>();
+        
     }
 
     private int GetBlockSafely(int x, int y, int z)
@@ -64,6 +63,22 @@ public class Chunk : MonoBehaviour
         }
         int index = x + y * ChunkSize + z * ChunkSize * ChunkSize;
         return blocks[index];
+    }
+
+    public void GenerateChunkTerrain()
+    {
+        // 仮に全blockを石で初期化
+        for (int x = 0; x < ChunkSize; x++)
+        {
+            for (int y = 0; y < ChunkSize; y++)
+            {
+                for (int z = 0; z < ChunkSize; z++)
+                {
+                    int index = x + y * ChunkSize + z * ChunkSize * ChunkSize;
+                    blocks[index] = 1; // 全て石で初期化
+                }
+            }
+        }
     }
 
     public void GenerateChunkMesh()
