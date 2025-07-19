@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ public class World : MonoBehaviour
 {
     public const int ChunkSize = 16;
     const int renderRadius = 5;
+    private string worldSavePath;
 
     private int seed;
 
@@ -17,11 +19,13 @@ public class World : MonoBehaviour
     Vector2Int lastChunkPosition;
     Vector2Int currentChunkPosition;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    async void Start()
-    {
-        // シード値をランダムに設定
-        seed = Random.Range(0, 10000);
+    async void Awake() {
+        worldSavePath = Path.Combine(Application.persistentDataPath, "WorldSave","Chunks");
+        Directory.CreateDirectory(worldSavePath);
+
+        // シード値を設定
+        // seed = Random.Range(0, 10000);
+        seed = 12345;
 
         lastChunkPosition = GetChunkPosition();
         currentChunkPosition = lastChunkPosition;
@@ -113,24 +117,39 @@ public class World : MonoBehaviour
 
     private async Task ActivateChunkAsync(Vector2Int chunkPos)
     {
+        if (activeChunks.ContainsKey(chunkPos)) return; // 既にアクティブなチャンクは無視
+
         Vector3 position = new Vector3(chunkPos.x * ChunkSize, 0, chunkPos.y * ChunkSize);
         GameObject chunkObject = Instantiate(chunkPrefab, position, Quaternion.identity);
         Chunk chunk = chunkObject.GetComponent<Chunk>();
         activeChunks[chunkPos] = chunk;
 
-        await chunk.GenerateChunkAsync(chunkPos, seed);
+        // ファイルが存在するならロード
+        string filepath = Path.Combine(worldSavePath, $"{chunkPos.x}_{chunkPos.y}.chunk");
+        if (File.Exists(filepath))
+        {
+            await chunk.LoadChunkData(filepath);
+        }
+        else
+        {
+            await chunk.GenerateChunkTerrainAsync(chunkPos, seed);
+        }
     }
 
     private void DeactivateChunk(Vector2Int chunkPos)
     {
         if (activeChunks.TryGetValue(chunkPos, out Chunk chunk))
         {
+            // チャンクのデータを保存
+            string filepath = Path.Combine(worldSavePath, $"{chunkPos.x}_{chunkPos.y}.chunk");
+            File.WriteAllBytes(filepath, chunk.GetBlocks());
+
             activeChunks.Remove(chunkPos);
             Destroy(chunk.gameObject);
         }
     }
 
-    public async Task SetBlockWorld(Vector3 position, int blockType)
+    public async Task SetBlockWorld(Vector3 position, byte blockType)
     {
         // チャンク座標を計算
         Vector2Int chunkPos = new Vector2Int(

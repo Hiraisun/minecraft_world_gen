@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Threading.Tasks;
+using System.IO;
 
 // メッシュデータを格納するクラス
 public class MeshData
@@ -61,8 +62,8 @@ public static class BlockUV
 
 public class Chunk : MonoBehaviour
 {
-    public const int ChunkSize = 16;
-    public int[] blocks = new int[ChunkSize * ChunkSize * ChunkSize];
+    private const int ChunkSize = 16;
+    private byte[] blocks = new byte[ChunkSize * ChunkSize * ChunkSize];
     [SerializeField] private MeshFilter meshFilter;
     [SerializeField] private MeshCollider meshCollider;
 
@@ -86,7 +87,7 @@ public class Chunk : MonoBehaviour
         return blocks[index];
     }
 
-    private async Task GenerateChunkTerrainAsync(Vector2Int chunkPos, int seed)
+    public async Task GenerateChunkTerrainAsync(Vector2Int chunkPos, int seed)
     {
         await Task.Run(() =>
         {
@@ -140,6 +141,8 @@ public class Chunk : MonoBehaviour
                 }
             }
         });
+
+        await GenerateChunkMeshAsync();
     }
 
     private async Task GenerateChunkMeshAsync()
@@ -263,15 +266,21 @@ public class Chunk : MonoBehaviour
         uvs.Add(faceUVs[3]);
     }
 
-    // 非同期でチャンクを完全生成する統合メソッド
-    public async Task GenerateChunkAsync(Vector2Int chunkPos, int seed)
+    public byte[] GetBlocks()
     {
-        await GenerateChunkTerrainAsync(chunkPos, seed);
+        return blocks;
+    }
+
+    public async Task LoadChunkData(string filepath)
+    {
+        // チャンクデータを復元
+        blocks = await File.ReadAllBytesAsync(filepath);
+        Debug.Log($"Chunk data loaded: {blocks.Length} bytes");
+
         await GenerateChunkMeshAsync();
     }
 
-
-    public async Task SetBlock(Vector3Int position, int blockType)
+    public async Task SetBlock(Vector3Int position, byte blockType)
     {
         if (position.x < 0 || position.x >= ChunkSize || position.y < 0 || position.y >= ChunkSize || position.z < 0 || position.z >= ChunkSize)
         {

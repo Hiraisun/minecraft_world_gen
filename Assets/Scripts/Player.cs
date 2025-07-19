@@ -16,9 +16,9 @@ public class Player : MonoBehaviour
     
     [Header("Block Placement")]
     [SerializeField] private float placeRange = 5f;
-    [SerializeField] private int blockTypeToPlace = 3; // 設置するブロックタイプ（木）
-    [SerializeField] private int blockTypeToBreak = 0; // 破壊(空気)
-    
+    [SerializeField] private byte blockTypeToPlace = 3; // 設置するブロックタイプ（木）
+    [SerializeField] private byte blockTypeToBreak = 0; // 破壊(空気)
+
     private Camera playerCamera;
     private float xRotation = 0f;
     public bool isGrounded;
